@@ -1,0 +1,59 @@
+#!/bin/bash
+# sidrule is a simple bash-script to manage Snort/Emerging Threats/Suricata
+# IDS-rules based on its sid.
+
+# CONFIG
+RULEPATH=/etc/snort/rules/
+
+## MAIN ##
+if [ "$1" == "list" ] || [ "$1" == "-l" ];then 
+   FOUND=`grep -ri "sid:$2; " $RULEPATH|sed -e "s/.rules:/.rules\n[*] /"`
+   if [ "$FOUND" != "" ];then
+      echo -n "[*] In file: "
+      echo "$FOUND"
+   else
+      echo "[*] sid:$2 not found!"
+   fi
+
+elif [ "$1" == "enable" ] || [ "$1" == "-e" ];then
+   FRULE=`grep -ri "sid:$2; " $RULEPATH|awk -F: '{print $1}'`
+
+   if [ "$FRULE" == "" ];then
+      echo "[*] sid:$2 not found!"
+      exit;
+   fi
+
+   echo ""
+   echo "[*] Found sid:$2 in $FRULE"
+   echo "[*] Enabling:"
+   sed -i -e "s/^#\(.*sid:$2;.*\)$/\1/" $FRULE
+   echo -n "[*] "
+   grep -ri "sid:$2; " $FRULE
+   echo ""
+
+elif [ "$1" == "disable" ] || [ "$1" == "-d" ];then
+   FRULE=`grep -ri "sid:$2; " $RULEPATH|awk -F: '{print $1}'`
+
+   if [ "$FRULE" == "" ];then
+      echo "[*] sid:$2 not found!"
+      exit;
+   fi
+
+   echo ""
+   echo "[*] Found sid:$2 in $FRULE:"
+   echo "[*] Disabling:"
+   sed -i -e "s/^alert.*sid:$2;.*$/#\0/" $FRULE
+   #sed -i -e "s/^drop.*sid:$2;.*$/#\0/" $FRULE
+
+   echo -n "[*] "
+   grep -ri "sid:$2; " $FRULE
+   echo ""
+
+else
+   echo " Bash'ed together by edward.fjellskal@redpill-linpro.com "
+   echo " Usage:"
+   echo "   $0 [list|enable|disable] sid"
+   echo "    or"
+   echo "   $0 [ -l |  -e  |  -d   ] sid"
+   echo ""
+fi
