@@ -2,58 +2,242 @@
 # sidrule is a simple bash-script to manage Snort/Emerging Threats/Suricata
 # IDS-rules based on its sid.
 
-# CONFIG
-RULEPATH=/etc/snort/rules/
 
-## MAIN ##
-if [ "$1" == "list" ] || [ "$1" == "-l" ];then 
-   FOUND=`grep -ri "sid:$2; " $RULEPATH|sed -e "s/.rules:/.rules\n[*] /"`
+## Config
+# Path to your rules dir
+RULEPATH=/etc/snort/rules/
+# RuleType(RT) to work on; can be alert/drop/dynamic/log....
+RT="alert"
+
+## Functions
+function usage {
+   echo " Usage:"
+   echo "   sidrule [option] [<sid|searchterm|classtype>]"
+   echo ""
+   echo " Options:"
+   echo "   -l|list          List/Print out a single rule based no its sid"
+   echo "   -e|enable        Enable a single rule based on its sid"
+   echo "   -d|disable       Disable a single rule based on its sid"
+   echo "   -s|search        Search in rule \"msg:\" field"
+   echo "   -c|classtype     Search by classtype"
+   echo "   -p|policies      VRT predefined policies"
+   echo ""
+}
+
+function enablesid {
+   esid=$1
+
+   FRULE=`grep -ri "sid:$esid; " $RULEPATH|tail -n1|awk -F: '{print $1}'`
+
+   if [ "$FRULE" == "" ];then
+      echo "[*] sid:$esid not found!"
+      exit;
+   fi
+
+   echo "" 
+   echo "[*] Found sid:$esid in $FRULE"
+   echo "[*] Enabling:"
+   sed -i -e "s/^#\(.*sid:$esid;.*\)$/\1/" $FRULE
+   echo -n "[*] "
+   grep -ri "sid:$esid; " $FRULE
+   echo ""
+}
+
+function disablesid {
+   dsid=$1
+
+   FRULE=`grep -ri "sid:$dsid; " $RULEPATH|tail -n1|awk -F: '{print $1}'`
+
+   if [ "$FRULE" == "" ];then
+      echo "[*] sid:$dsid not found!"
+      exit;
+   fi
+
+   echo ""
+   echo "[*] Found sid:$dsid in $FRULE:"
+   echo "[*] Disabling:"
+   sed -i -e "s/^$RT.*sid:$dsid;.*$/#\0/" $FRULE
+
+   echo -n "[*] "
+   grep -ri "sid:$dsid; " $FRULE
+   echo ""
+}
+
+function displaysid {
+   lsid=$1
+   FOUND=`grep -ri "sid:$lsid; " $RULEPATH|sed -e "s/.rules:/.rules\n[*] /"`
    if [ "$FOUND" != "" ];then
       echo -n "[*] In file: "
       echo "$FOUND"
    else
-      echo "[*] sid:$2 not found!"
+      echo "[*] sid:$lsid not found!"
    fi
+}
+
+function searchsid {
+   SC=$1
+   args=("$@")
+   for (( i=2;i<$#;i++)); do
+      if [ $i -eq 2 ];then
+         search="${args[$i]}"
+      else
+         search="$search ${args[$i]}"
+      fi
+   done 
+
+   if [ "$SC" == "msg" ];then
+      FRULE=`grep -ri "$SC:\".*$search.*\"; " $RULEPATH|awk -F: '{print $1}'`
+   elif [ "$SC" == "classtype" ];then
+      FRULE=`grep -ri "$SC:.*$search.*; "     $RULEPATH|awk -F: '{print $1}'`
+   elif [ "$SC" == "metadata" ];then
+      FRULE=`grep -ri "$SC:.*$search.*; "     $RULEPATH|awk -F: '{print $1}'`
+   fi
+
+   FRULE_C=`echo "$FRULE"|wc -l`
+   FRULE_U=`echo "$FRULE"|sort -u`
+   FRULE_U_C=`echo "$FRULE_U"|wc -l`
+
+   if [ "$FRULE" == "" ];then
+      echo "[*] No matches for \"$search\" in $SC found!"
+      exit;
+   fi
+   
+   DALL=0
+   EALL=0
+   EDRBR=0
+   echo ""
+   echo "[*] Found $FRULE_C rules in $FRULE_U_C rule files."
+   echo "[*] Searchterm: $SC:\"$search\""
+   read -p "[*] Disable ALL rules (y/N)?"
+   if [ "$REPLY" == "y" ]; then
+      DALL=1
+      TSIDS=""
+      for RFILE in `echo "$FRULE_U"`; do
+         echo "[*] Getting sids from file: $RFILE"
+         # Could we just disable them all here with one sed!!!?
+         if [ "$SC" == "msg" ];then
+            SIDS=`grep -ri "$SC:\".*$search.*\"; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+         elif [ "$SC" == "classtype" ];then
+            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+         elif [ "$SC" == "metadata" ];then
+            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+         fi
+         TSIDS="$TSIDS
+$SIDS"
+      done
+
+      TSIDS_U=`echo $TSIDS|sort -u`
+      for sid in `echo $TSIDS_U`; do disablesid $sid; done
+
+      echo "done.."
+      exit 0
+   fi
+
+   if [ $DALL -eq 0 ]; then
+      read -p "[*] Enable ALL rules (y/N)?"
+      if [ "$REPLY" == "y" ]; then
+      EALL=1
+      TSIDS=""
+      for RFILE in `echo "$FRULE"`; do
+         echo "[*] Getting sids from file: $RFILE"
+         # Could we just enable them all here with one sed!!!?
+         if [ "$SC" == "msg" ];then
+            SIDS=`grep -ri "$SC:\".*$search.*\"; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+         elif [ "$SC" == "classtype" ];then
+            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+         elif [ "$SC" == "metadata" ];then
+            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+         fi
+         TSIDS="$TSIDS
+$SIDS"
+      done
+
+      TSIDS_U=`echo $TSIDS|sort -u`
+      for sid in `echo $TSIDS_U`; do enablesid $sid; done
+      echo "done.."
+      exit 0
+      fi
+   fi
+
+   if [ $DALL -eq 0 ] && [ $EALL -eq 0 ]; then
+      read -p "[*] Enable/Disable rule by rule (y/N)?"
+      if [ "$REPLY" == "y" ]; then
+      EDRBR=1
+      TSIDS=""
+      echo "[*] Getting sids from $FRULE_U_C file(s)".
+      c=1
+      for RFILE in `echo "$FRULE_U"`; do
+         echo "[*] ($c/$FRULE_U_C) Getting sids from file: $RFILE"
+         if [ "$SC" == "msg" ];then
+            SIDS=`grep -ri "$SC:\".*$search.*\"; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+         elif [ "$SC" == "classtype" ];then
+            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+         elif [ "$SC" == "metadata" ];then
+            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+         fi
+         TSIDS="$TSIDS
+$SIDS"
+      c=$(( $c + 1 ))
+      done
+
+      TSIDS_U=`echo $TSIDS|sort -u`
+      rulenr=1
+      for sid in `echo $TSIDS_U`; do
+         displaysid $sid
+         echo "[*] Rule $rulenr of $FRULE_C"
+         read -p "[*] Disable/Enable/Skip rule (d/e/S)?"
+         if [ "$REPLY" == "d" ]; then
+             disablesid $sid
+         elif [ "$REPLY" == "y" ]; then
+             enablesid $sid
+         else
+             echo "[*] Not processing rule.."
+             echo ""
+         fi
+         rulenr=$(( $rulenr + 1 ))
+      done
+
+      echo "done.."
+      exit 0
+      fi
+   fi
+}
+
+##### MAIN #####
+
+echo " Bash'ed together by edward.fjellskal@redpill-linpro.com "
+
+if [ "$1" == "list" ] || [ "$1" == "-l" ];then 
+    displaysid $2
 
 elif [ "$1" == "enable" ] || [ "$1" == "-e" ];then
-   FRULE=`grep -ri "sid:$2; " $RULEPATH|awk -F: '{print $1}'`
-
-   if [ "$FRULE" == "" ];then
-      echo "[*] sid:$2 not found!"
-      exit;
-   fi
-
-   echo ""
-   echo "[*] Found sid:$2 in $FRULE"
-   echo "[*] Enabling:"
-   sed -i -e "s/^#\(.*sid:$2;.*\)$/\1/" $FRULE
-   echo -n "[*] "
-   grep -ri "sid:$2; " $FRULE
-   echo ""
+   enablesid $2
 
 elif [ "$1" == "disable" ] || [ "$1" == "-d" ];then
-   FRULE=`grep -ri "sid:$2; " $RULEPATH|awk -F: '{print $1}'`
+   disablesid $2
 
-   if [ "$FRULE" == "" ];then
-      echo "[*] sid:$2 not found!"
-      exit;
-   fi
+elif [ "$1" == "classtype" ] || [ "$1" == "-c" ];then
+   # "classtype:" should have default setting to turn this on/off
+   # attempted-admin, web-application-attack, attempted-recon,misc-activity
+   # bad-unknown, attempted-dos, attempted-user, successful-admin
+   # and so on - /etc/snort/classification.config
+   SCC="classtype"
+   searchsid $SCC $@
 
-   echo ""
-   echo "[*] Found sid:$2 in $FRULE:"
-   echo "[*] Disabling:"
-   sed -i -e "s/^alert.*sid:$2;.*$/#\0/" $FRULE
-   #sed -i -e "s/^drop.*sid:$2;.*$/#\0/" $FRULE
+elif [ "$1" == "policies" ] || [ "$1" == "-p" ];then
+   # "metadata:" should have default setting to turn this on/off
+   # Connectivity Over Security, Balanced, and Security Over Connectivity
+   SCC="metadata"
+   searchsid $SCC $@
 
-   echo -n "[*] "
-   grep -ri "sid:$2; " $FRULE
-   echo ""
+elif [ "$1" == "search" ] || [ "$1" == "-s" ];then
+   # "msg:" Could have default settings to turn stuff on/off
+   # Like: "ET WEB_SPECIFIC <application>
+   # or  : "VOIP-SIP"
+   SCC="msg"
+   searchsid $SCC $@
 
 else
-   echo " Bash'ed together by edward.fjellskal@redpill-linpro.com "
-   echo " Usage:"
-   echo "   $0 [list|enable|disable] sid"
-   echo "    or"
-   echo "   $0 [ -l |  -e  |  -d   ] sid"
-   echo ""
+   usage
+
 fi
