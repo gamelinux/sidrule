@@ -227,6 +227,9 @@ elif [ "$1" == "classtype" ] || [ "$1" == "-c" ];then
 elif [ "$1" == "policies" ] || [ "$1" == "-p" ];then
    # "metadata:" should have default setting to turn this on/off
    # Connectivity Over Security, Balanced, and Security Over Connectivity
+   # policy connectivity-ips drop
+   # policy balanced-ips drop
+   # policy security-ips drop
    SCC="metadata"
    searchsid $SCC $@
 
