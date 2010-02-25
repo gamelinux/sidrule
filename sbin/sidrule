@@ -1,7 +1,6 @@
 #!/bin/bash
-# sidrule is a simple bash-script to manage Snort/Emerging Threats/Suricata
-# IDS-rules based on its sid.
-
+# sidrule is a bash-script to manage Snort/Emerging Threats/Suricata
+# IDS-rules based on its sid, msg, classtype or metadata tag.
 
 ## Config
 # Path to your rules dir
@@ -206,14 +205,26 @@ $SIDS"
 ##### MAIN #####
 
 echo " Bash'ed together by edward.fjellskal@redpill-linpro.com "
-
+  
 if [ "$1" == "list" ] || [ "$1" == "-l" ];then 
-    displaysid $2
+   if [ "$2" = "" ];then
+      echo "The *list* option needs a <sid> number!"
+      exit
+   fi
+   displaysid $2
 
 elif [ "$1" == "enable" ] || [ "$1" == "-e" ];then
+   if [ "$2" = "" ];then
+      echo "The *enable* option needs a <sid> number!"
+      exit 
+   fi
    enablesid $2
 
 elif [ "$1" == "disable" ] || [ "$1" == "-d" ];then
+   if [ "$2" = "" ];then
+      echo "The *disable* option needs a <sid> number!"
+      exit
+   fi
    disablesid $2
 
 elif [ "$1" == "classtype" ] || [ "$1" == "-c" ];then
@@ -221,6 +232,15 @@ elif [ "$1" == "classtype" ] || [ "$1" == "-c" ];then
    # attempted-admin, web-application-attack, attempted-recon,misc-activity
    # bad-unknown, attempted-dos, attempted-user, successful-admin
    # and so on - /etc/snort/classification.config
+   if [ "$2" = "" ];then
+      echo "The *classtype* option needs a classtype:"
+      echo "  Try: attempted-admin or web-application-attack or"
+      echo "       attempted-recon or misc-activity or bad-unknown or"
+      echo "       attempted-dos or attempted-user or successful-admin"
+      echo "       and so on..."
+      echo "  Check out: classification.config for more valid classes"
+      exit
+   fi
    SCC="classtype"
    searchsid $SCC $@
 
@@ -230,6 +250,15 @@ elif [ "$1" == "policies" ] || [ "$1" == "-p" ];then
    # policy connectivity-ips drop
    # policy balanced-ips drop
    # policy security-ips drop
+   if [ "$2" = "" ];then
+      echo "The *policies* option needs a policy:"
+      echo "  Sourcefire currently supports:"
+      echo "      policy connectivity-ips drop"
+      echo "      policy balanced-ips drop"
+      echo "      policy security-ips drop"
+      exit
+   fi
+
    SCC="metadata"
    searchsid $SCC $@
 
