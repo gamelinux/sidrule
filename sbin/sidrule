@@ -26,7 +26,7 @@ function usage {
 function enablesid {
    esid=$1
 
-   FRULE=`grep -ri "sid:$esid; " $RULEPATH|tail -n1|awk -F: '{print $1}'`
+   FRULE=`grep -ri "sid: \?$esid; " $RULEPATH|tail -n1|awk -F: '{print $1}'`
 
    if [ "$FRULE" == "" ];then
       echo "[*] sid:$esid not found!"
@@ -36,16 +36,16 @@ function enablesid {
    echo "" 
    echo "[*] Found sid:$esid in $FRULE"
    echo "[*] Enabling:"
-   sed -i -e "s/^#\(.*sid:$esid;.*\)$/\1/" $FRULE
+   sed -i -e "s/^#\(.*sid: \?$esid;.*\)$/\1/" $FRULE
    echo -n "[*] "
-   grep -ri "sid:$esid; " $FRULE
+   grep -ri "sid: \?$esid; " $FRULE
    echo ""
 }
 
 function disablesid {
    dsid=$1
 
-   FRULE=`grep -ri "sid:$dsid; " $RULEPATH|tail -n1|awk -F: '{print $1}'`
+   FRULE=`grep -ri "sid: \?$dsid; " $RULEPATH|tail -n1|awk -F: '{print $1}'`
 
    if [ "$FRULE" == "" ];then
       echo "[*] sid:$dsid not found!"
@@ -55,16 +55,16 @@ function disablesid {
    echo ""
    echo "[*] Found sid:$dsid in $FRULE:"
    echo "[*] Disabling:"
-   sed -i -e "s/^$RT.*sid:$dsid;.*$/#\0/" $FRULE
+   sed -i -e "s/^$RT.*sid: \?$dsid;.*$/#\0/" $FRULE
 
    echo -n "[*] "
-   grep -ri "sid:$dsid; " $FRULE
+   grep -ri "sid: \?$dsid; " $FRULE
    echo ""
 }
 
 function displaysid {
    lsid=$1
-   FOUND=`grep -ri "sid:$lsid; " $RULEPATH|sed -e "s/.rules:/.rules\n[*] /"`
+   FOUND=`grep -ri "sid: \?$lsid; " $RULEPATH|sed -e "s/.rules:/.rules\n[*] /"`
    if [ "$FOUND" != "" ];then
       echo -n "[*] In file: "
       echo "$FOUND"
@@ -115,11 +115,11 @@ function searchsid {
          echo "[*] Getting sids from file: $RFILE"
          # Could we just disable them all here with one sed!!!?
          if [ "$SC" == "msg" ];then
-            SIDS=`grep -ri "$SC:\".*$search.*\"; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+            SIDS=`grep -ri "$SC:\".*$search.*\"; " $RFILE|sed "s/.*sid\: \?\([0-9]\+\)\;.*/\1/"`
          elif [ "$SC" == "classtype" ];then
-            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\: \?\([0-9]\+\)\;.*/\1/"`
          elif [ "$SC" == "metadata" ];then
-            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\: \?\([0-9]\+\)\;.*/\1/"`
          fi
          TSIDS="$TSIDS
 $SIDS"
@@ -141,11 +141,11 @@ $SIDS"
          echo "[*] Getting sids from file: $RFILE"
          # Could we just enable them all here with one sed!!!?
          if [ "$SC" == "msg" ];then
-            SIDS=`grep -ri "$SC:\".*$search.*\"; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+            SIDS=`grep -ri "$SC:\".*$search.*\"; " $RFILE|sed "s/.*sid\: \?\([0-9]\+\)\;.*/\1/"`
          elif [ "$SC" == "classtype" ];then
-            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\: \?\([0-9]\+\)\;.*/\1/"`
          elif [ "$SC" == "metadata" ];then
-            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\: \?\([0-9]\+\)\;.*/\1/"`
          fi
          TSIDS="$TSIDS
 $SIDS"
@@ -168,11 +168,11 @@ $SIDS"
       for RFILE in `echo "$FRULE_U"`; do
          echo "[*] ($c/$FRULE_U_C) Getting sids from file: $RFILE"
          if [ "$SC" == "msg" ];then
-            SIDS=`grep -ri "$SC:\".*$search.*\"; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+            SIDS=`grep -ri "$SC:\".*$search.*\"; " $RFILE|sed "s/.*sid\: \?\([0-9]\+\)\;.*/\1/"`
          elif [ "$SC" == "classtype" ];then
-            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\: \?\([0-9]\+\)\;.*/\1/"`
          elif [ "$SC" == "metadata" ];then
-            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\:\([0-9]\+\)\;.*/\1/"`
+            SIDS=`grep -ri "$SC:.*$search.*; " $RFILE|sed "s/.*sid\: \?\([0-9]\+\)\;.*/\1/"`
          fi
          TSIDS="$TSIDS
 $SIDS"
